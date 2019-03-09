@@ -84,6 +84,8 @@ impl fmt::Display for ImageIllumination {
 }
 
 pub fn extract_image_details(img_name: &str) -> ImageDetails {
+    
+
     ImageDetails {
         image_type: ImageType::Pack8,
         illumination: vec![]
