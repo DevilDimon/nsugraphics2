@@ -8,7 +8,7 @@ fn main() {
     let img = image::open(std::path::Path::new(&filename))
         .expect("Cannot find the image at the given path");
 
-    println!("Image info: {}", image_details::extract_image_details(std::path::Path::new(&filename)
+    println!("{}", image_details::extract_image_details(std::path::Path::new(&filename)
         .file_stem()
         .expect("Wrong filename")
         .to_str()

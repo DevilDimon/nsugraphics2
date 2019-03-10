@@ -9,7 +9,7 @@ impl fmt::Display for ImageDetails {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut illumination_str = String::new();
         for illumination in self.illumination.iter() {
-            illumination_str += &format!("{}", illumination);
+            illumination_str += &format!("{}, ", illumination);
         }
 
         write!(f, "image type: {}\nillumination: {}", self.image_type, illumination_str)
@@ -64,6 +64,30 @@ enum ImageIllumination {
     CFUX,
 }
 
+impl ImageIllumination {
+    fn from(string: &str) -> Option<Self> {
+        match string.parse::<u16>() {
+            Ok(n) => return Option::from(ImageIllumination::LED(n)),
+            Err(_) => ()
+        };
+
+        match string {
+            "RAIR" => Option::from(ImageIllumination::RAIR),
+            "RABR" => Option::from(ImageIllumination::RABR),
+            "RAIL" => Option::from(ImageIllumination::RAIL),
+            "RABL" => Option::from(ImageIllumination::RABL),
+            "CFUR" => Option::from(ImageIllumination::CFUR),
+            "CFUG" => Option::from(ImageIllumination::CFUG),
+            "CFUB" => Option::from(ImageIllumination::CFUB),
+            "CFBR" => Option::from(ImageIllumination::CFBR),
+            "CFBG" => Option::from(ImageIllumination::CFBG),
+            "CFBB" => Option::from(ImageIllumination::CFBB),
+            "CFUX" => Option::from(ImageIllumination::CFUX),
+            _ => Option::None
+        }
+    }
+}
+
 impl fmt::Display for ImageIllumination {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -84,10 +108,75 @@ impl fmt::Display for ImageIllumination {
 }
 
 pub fn extract_image_details(img_name: &str) -> ImageDetails {
-    
+    let mut iter = img_name.split('_');
+    iter.next().expect("Malformed name"); // Skip troparia folio
+    iter.next().expect("Malformed name"); // Skip shot sequence number
+
+    let sequence_ext_or_processing = iter.next().expect("Malformed name");
+    let processing_details;
+    if vec!["A", "B", "C", "D", "E"].contains(&sequence_ext_or_processing) {
+        processing_details = iter.next().expect("Malformed name");
+    } else {
+        processing_details = sequence_ext_or_processing;
+    }
+
+    if let Some(illumination) = ImageIllumination::from(processing_details) {
+        return ImageDetails {
+            image_type: ImageType::Pack8,
+            illumination: vec![illumination]
+        }
+    }
+
+    match processing_details {
+        "color" => {
+            return ImageDetails {
+                image_type: ImageType::Color,
+                illumination: vec![]
+            }
+        },
+        "pca" => {
+            let pca_flag = iter.next().expect("Malformed name");
+            if pca_flag.len() == 2 {
+                let num = pca_flag.trim_start_matches('C');
+                return ImageDetails {
+                    image_type: ImageType::PCA(PCAFlag::C(num.parse::<u8>().expect("Malformed name"))),
+                    illumination: vec![]
+                }
+            }
+            let rgb_components: Vec<&str> = pca_flag.split('-').collect();
+            let (r, g, b) = (rgb_components[1], rgb_components[2], rgb_components[3]);
+            let r_num = r.trim_start_matches("inv");
+            let r_tuple = (r.starts_with("inv"), r_num.parse::<u8>().expect("Malformed name"));
+            let g_num = g.trim_start_matches("inv");
+            let g_tuple = (g.starts_with("inv"), g_num.parse::<u8>().expect("Malformed name"));
+            let b_num = b.trim_start_matches("inv");
+            let b_tuple = (b.starts_with("inv"), b_num.parse::<u8>().expect("Malformed name"));
+            return ImageDetails {
+                image_type: ImageType::PCA(PCAFlag::RGB(r_tuple, g_tuple, b_tuple)),
+                illumination: vec![]
+            }
+        },
+
+        _ => ()
+    };
+
+    let image_type = match processing_details {
+        "pseudo" => ImageType::Pseudo,
+        "sharpie" => ImageType::Sharpie,
+        "csharpie" => ImageType::CSharpie,
+        _ => panic!("Malformed name")
+    };
+
+    let illumination: Vec<ImageIllumination> = iter.next().expect("Malformed name")
+        .split('-')
+        .collect::<Vec<&str>>()
+        .into_iter()
+        .map(|e| ImageIllumination::from(e))
+        .flat_map(|e| e)
+        .collect::<Vec<ImageIllumination>>();
 
     ImageDetails {
-        image_type: ImageType::Pack8,
-        illumination: vec![]
+        image_type, illumination
     }
+
 }
