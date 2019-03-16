@@ -1,6 +1,6 @@
 extern crate image;
 
-use crate::image_processing::{greyscale, gaussian_blur};
+use crate::image_processing::{greyscale, gaussian_blur, sobel_non_maximum_suppressed};
 
 mod image_details;
 mod image_processing;
@@ -19,6 +19,7 @@ fn main() {
         .expect("Wrong filename")));
 
     let mut greyscaled = greyscale(&mut img);
-    let mut blurres = gaussian_blur(&mut greyscaled, 0.0);
-    blurres.save("result.jpg").expect("Failed to save");
+    let mut blurred = gaussian_blur(&mut greyscaled, 0.0);
+//    let mut sobeled = sobel_non_maximum_suppressed(&mut blurred);
+    blurred.save("result.jpg").expect("Failed to save");
 }
