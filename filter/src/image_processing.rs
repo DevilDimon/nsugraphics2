@@ -26,33 +26,38 @@ pub fn gaussian_blur(img: &mut RgbImage, sigma: f32) -> &mut RgbImage {
 }
 
 pub fn sobel_non_maximum_suppressed(img: &mut RgbImage) -> &mut RgbImage {
-    let mut img_clone1 = img.clone();
-    let mut img_clone2 = img.clone();
+    let mut img_clone = img.clone();
     let horizontal_kernel = vec![
         vec![1, 2, 1],
         vec![0, 0, 0],
         vec![-1, -2, -1]
     ];
-    let y_grad = kernel_filter(&mut img_clone1, horizontal_kernel, 1);
-    y_grad.save("y_grad.jpg").expect("Cannot save y_grad");
     let vertical_kernel = vec![
         vec![1, 0, -1],
         vec![2, 0, -2],
         vec![1, 0, -1]
     ];
-    let x_grad = kernel_filter(&mut img_clone2, vertical_kernel, 1);
-    x_grad.save("x_grad.jpg").expect("Cannot save x_grad");
     let width = img.width() as i32;
     let height = img.height() as i32;
     let mut directions = vec![vec![0.0; width as usize]; height as usize];
 
     for i in 0..height {
         for j in 0..width {
-            let x_der = x_grad.get_pixel(j as u32, i as u32).data[0];
-            let y_der = y_grad.get_pixel(j as u32, i as u32).data[0];
-            let g = clamp_plain_color((x_der as f64).hypot(y_der as f64));
+            let mut g_x = 0;
+            let mut g_y = 0;
+
+            for k in 0..3 {
+                for q in 0..3 {
+                    let x =  if j + k - 1 < width - 1 && j + k - 1 >= 0 { j + k - 1  } else { j };
+                    let y = if i + q - 1 < height - 1 && i + q - 1 >= 0 { i + q - 1 } else { i };
+                    let pixel = img_clone.get_pixel(x as u32, y as u32).data[0] as i32;
+                    g_x += pixel * horizontal_kernel[k as usize][q as usize];
+                    g_y += pixel * vertical_kernel[k as usize][q as usize];
+                }
+            }
+            let g = clamp_plain_color((g_x as f64).hypot(g_y as f64));
             img.put_pixel(j as u32, i as u32, g);
-            let theta = ((y_der as f64).atan2(x_der as f64) * 4.0 / PI).round() * PI / 4.0 - PI / 2.0;
+            let theta = ((g_y as f64).atan2(g_x as f64) * 4.0 / PI).round() * PI / 4.0 - PI / 2.0;
             directions[i as usize][j as usize] = theta;
         }
     }

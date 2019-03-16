@@ -20,6 +20,6 @@ fn main() {
 
     let mut greyscaled = greyscale(&mut img);
     let mut blurred = gaussian_blur(&mut greyscaled, 0.0);
-//    let mut sobeled = sobel_non_maximum_suppressed(&mut blurred);
-    blurred.save("result.jpg").expect("Failed to save");
+    let mut sobeled = sobel_non_maximum_suppressed(&mut blurred);
+    sobeled.save("result.jpg").expect("Failed to save");
 }
