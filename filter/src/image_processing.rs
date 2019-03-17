@@ -120,6 +120,44 @@ pub fn threshold(img: &mut RgbImage, lower_bound: f64, upper_bound: f64) -> &mut
     img
 }
 
+pub fn blob(img: &mut RgbImage) -> &mut RgbImage {
+    let mut directions: Vec<(i32, i32)> = vec![];
+    for i in -1..1 {
+        for j in -1..1 {
+            if i != 0 || j != 0 {
+                directions.push((i, j));
+            }
+        }
+    }
+
+    let img_clone = img.clone();
+    let width = img.width();
+    let height = img.height();
+    for i in 0..height {
+        for j in 0..width {
+            img.put_pixel(j, i, img_clone.get_pixel(j, i).clone());
+            for (x_dir, y_dir) in directions.iter() {
+                let mut cur_x = j as i32;
+                let mut cur_y = i as i32;
+                loop {
+                    cur_x += x_dir;
+                    cur_y += y_dir;
+                    if cur_x < 0 || cur_x >= width as i32 || cur_y < 0 || cur_y >= height as i32 {
+                        break;
+                    }
+                    let pixel = img_clone.get_pixel(cur_x as u32, cur_y as u32).data[0];
+                    if  pixel == 0 || pixel == 255 {
+                        break;
+                    }
+                    img.put_pixel(cur_x as u32, cur_y as u32, image::Rgb([255; 3]));
+                }
+            }
+        }
+    }
+
+    img
+}
+
 fn kernel_filter(img: &mut RgbImage, kernel: Vec<Vec<i32>>, divisor: i32) -> &mut RgbImage {
     let width = img.width() as i32;
     let height = img.height() as i32;

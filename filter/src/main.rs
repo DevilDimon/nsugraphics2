@@ -1,6 +1,6 @@
 extern crate image;
 
-use crate::image_processing::{greyscale, gaussian_blur, sobel, non_maximum_suppression, threshold};
+use crate::image_processing::{greyscale, gaussian_blur, sobel, non_maximum_suppression, threshold, blob};
 
 mod image_details;
 mod image_processing;
@@ -22,6 +22,7 @@ fn main() {
     let mut blurred = gaussian_blur(&mut greyscaled);
     let (mut sobeled, directions) = sobel(&mut blurred);
     let mut suppressed = non_maximum_suppression(&mut sobeled, directions);
-    let thresheld = threshold(&mut suppressed, 0.15, 0.45);
-    thresheld.save("result.jpg").expect("Failed to save");
+    let mut thresheld = threshold(&mut suppressed, 0.15, 0.45);
+    let blobbed = blob(&mut thresheld);
+    blobbed.save("result.jpg").expect("Failed to save");
 }
