@@ -26,7 +26,7 @@ pub fn gaussian_blur(img: &mut RgbImage, sigma: f32) -> &mut RgbImage {
 }
 
 pub fn sobel_non_maximum_suppressed(img: &mut RgbImage) -> &mut RgbImage {
-    let mut img_clone = img.clone();
+    let img_clone = img.clone();
     let horizontal_kernel = vec![
         vec![1, 2, 1],
         vec![0, 0, 0],
@@ -48,8 +48,8 @@ pub fn sobel_non_maximum_suppressed(img: &mut RgbImage) -> &mut RgbImage {
 
             for k in 0..3 {
                 for q in 0..3 {
-                    let x =  if j + k - 1 < width - 1 && j + k - 1 >= 0 { j + k - 1  } else { j };
-                    let y = if i + q - 1 < height - 1 && i + q - 1 >= 0 { i + q - 1 } else { i };
+                    let x =  clamp(j + k - 1, 0, width - 1);
+                    let y = clamp(i + q - 1, 0, height - 1);
                     let pixel = img_clone.get_pixel(x as u32, y as u32).data[0] as i32;
                     g_x += pixel * horizontal_kernel[k as usize][q as usize];
                     g_y += pixel * vertical_kernel[k as usize][q as usize];
@@ -81,13 +81,12 @@ fn kernel_filter(img: &mut RgbImage, kernel: Vec<Vec<i32>>, divisor: i32) -> &mu
             let mut sums = [0.0, 0.0, 0.0];
             for u in (-matrix_size / 2)..=(matrix_size / 2) {
                 for v in (-matrix_size / 2)..=(matrix_size / 2) {
-                    if j + u  < 0 || j + u > width - 1 || i + v < 0 || i + v > height - 1 {
-                        continue;
-                    }
+                    let x = clamp(j + u, 0, width - 1);
+                    let y = clamp(i + v, 0, height - 1);
                     for k in 0..3 {
                         sums[k] +=
                             kernel[(matrix_size / 2 + u) as usize][(matrix_size / 2 + v) as usize] as f64 *
-                            img_clone.get_pixel((j + u) as u32, (i + v) as u32).data[k] as f64 / divisor as f64;
+                            img_clone.get_pixel(x as u32, y as u32).data[k] as f64 / divisor as f64;
                     }
                 }
             }
@@ -108,7 +107,7 @@ fn clamp_color(components: [f64; 3]) -> image::Rgb<u8> {
 }
 
 fn clamp_plain_color(value: f64) -> image::Rgb<u8> {
-    let clamped_value = clamp(value.round() as u8, 0, 0xFF);
-    let values: [u8; 3] = [clamped_value, clamped_value, clamped_value];
+    let clamped_value = clamp(value.round(), 0.0, 255.0) as u8;
+    let values = [clamped_value; 3];
     image::Rgb(values)
 }
