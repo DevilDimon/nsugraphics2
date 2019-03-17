@@ -1,6 +1,7 @@
 use image::RgbImage;
 use image::math::utils::clamp;
 use std::f64::consts::PI;
+use std::f64::NAN;
 
 pub fn greyscale(img: &mut RgbImage) -> &mut RgbImage {
     for pixel in img.pixels_mut() {
@@ -13,7 +14,7 @@ pub fn greyscale(img: &mut RgbImage) -> &mut RgbImage {
     img
 }
 
-pub fn gaussian_blur(img: &mut RgbImage, sigma: f32) -> &mut RgbImage {
+pub fn gaussian_blur(img: &mut RgbImage) -> &mut RgbImage {
     let kernel = vec![
         vec![2, 4, 5, 4, 2],
         vec![4, 9, 12, 9, 4],
@@ -25,7 +26,7 @@ pub fn gaussian_blur(img: &mut RgbImage, sigma: f32) -> &mut RgbImage {
     kernel_filter(img, kernel, divisor)
 }
 
-pub fn sobel_non_maximum_suppressed(img: &mut RgbImage) -> &mut RgbImage {
+pub fn sobel(img: &mut RgbImage) -> (&mut RgbImage, Vec<Vec<f64>>) {
     let img_clone = img.clone();
     let horizontal_kernel = vec![
         vec![1, 2, 1],
@@ -55,19 +56,46 @@ pub fn sobel_non_maximum_suppressed(img: &mut RgbImage) -> &mut RgbImage {
                     g_y += pixel * vertical_kernel[k as usize][q as usize];
                 }
             }
+            let g_x = clamp(g_x, 0, 255);
+            let g_y = clamp(g_y, 0, 255);
             let g = clamp_plain_color((g_x as f64).hypot(g_y as f64));
             img.put_pixel(j as u32, i as u32, g);
             let theta = ((g_y as f64).atan2(g_x as f64) * 4.0 / PI).round() * PI / 4.0 - PI / 2.0;
-            directions[i as usize][j as usize] = theta;
+            directions[i as usize][j as usize] = if g.data[0] == 0 { NAN } else { theta };
         }
     }
+    (img, directions)
+}
 
-//    for i in 0..height {
-//        for j in 0..width {
-//
-//        }
-//    }
+pub fn non_maximum_suppression(img: &mut RgbImage, directions: Vec<Vec<f64>>) -> &mut RgbImage {
+    let img_clone = img.clone();
+    let width = img.width() as i32;
+    let height = img.height() as i32;
 
+    for i in 0..height as i32 {
+        for j in 0..width as i32 {
+            if directions[i as usize][j as usize].is_nan() {
+                img.put_pixel(j as u32, i as u32, image::Rgb([0; 3]));
+                continue
+            }
+            let dx = directions[i as usize][j as usize].cos().signum() as i32;
+            let dy = directions[i as usize][j as usize].sin().signum() as i32;
+            if j + dx >= 0 && i + dy >= 0 && j + dx < width && i + dy < height &&
+                img_clone.get_pixel((j + dx) as u32, (i + dy) as u32).data[0] <= img_clone.get_pixel(j as u32, i as u32).data[0] {
+
+                img.put_pixel((j + dx) as u32, (i + dy) as u32, image::Rgb([0; 3]));
+            }
+            if j - dx >= 0 &&
+                i - dy >= 0 &&
+                j - dx < width &&
+                i - dy < height &&
+                img_clone.get_pixel((j - dx) as u32, (i - dy) as u32).data[0] <= img_clone.get_pixel(j as u32, i as u32).data[0] {
+
+                img.put_pixel((j - dx) as u32, (i - dy) as u32, image::Rgb([0; 3]));
+            }
+            img.put_pixel(j as u32, i as u32, img_clone.get_pixel(j as u32, i as u32).clone());
+        }
+    }
     img
 }
 
