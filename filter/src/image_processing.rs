@@ -16,13 +16,13 @@ pub fn greyscale(img: &mut RgbImage) -> &mut RgbImage {
 
 pub fn gaussian_blur(img: &mut RgbImage) -> &mut RgbImage {
     let kernel = vec![
-        vec![2, 4, 5, 4, 2],
-        vec![4, 9, 12, 9, 4],
-        vec![5, 12, 15, 12, 5],
-        vec![4, 9, 12, 9, 4],
-        vec![2, 4, 5, 4, 2]
+        vec![2.0, 4.0, 5.0, 4.0, 2.0],
+        vec![4.0, 9.0, 12.0, 9.0, 4.0],
+        vec![5.0, 12.0, 15.0, 12.0, 5.0],
+        vec![4.0, 9.0, 12.0, 9.0, 4.0],
+        vec![2.0, 4.0, 5.0, 4.0, 2.0]
     ];
-    let divisor = 159;
+    let divisor = 159.0;
     kernel_filter(img, kernel, divisor)
 }
 
@@ -122,8 +122,8 @@ pub fn threshold(img: &mut RgbImage, lower_bound: f64, upper_bound: f64) -> &mut
 
 pub fn blob(img: &mut RgbImage) -> &mut RgbImage {
     let mut directions: Vec<(i32, i32)> = vec![];
-    for i in -1..1 {
-        for j in -1..1 {
+    for i in -1..=1 {
+        for j in -1..=1 {
             if i != 0 || j != 0 {
                 directions.push((i, j));
             }
@@ -158,7 +158,53 @@ pub fn blob(img: &mut RgbImage) -> &mut RgbImage {
     img
 }
 
-fn kernel_filter(img: &mut RgbImage, kernel: Vec<Vec<i32>>, divisor: i32) -> &mut RgbImage {
+pub fn gabor_filter(img: &RgbImage, size: u32, lambda: f64, gamma: f64) -> RgbImage {
+    let sigma = 0.56 * lambda;
+    let gabor = |x: i32, y: i32, theta: f64| {
+        let x_theta = x as f64 * theta.cos() + y as f64 * theta.sin();
+        let y_theta = -x as f64 * theta.sin() + y as f64 * theta.cos();
+        (-((x_theta * x_theta) + (gamma * gamma) * (y_theta * y_theta)) / (2.0 * sigma * sigma)).exp()
+         * (2.0 * PI * x_theta  / lambda).cos()
+    };
+
+    let width = img.width();
+    let height = img.height();
+    let mut result_img: RgbImage = image::ImageBuffer::new(width, height);
+    for theta in (0..=150).step_by(30) {
+        let mut matrix = vec![vec![0.0; size as usize]; size as usize];
+        for y in 0..size as i32 {
+            for x in 0..size as i32 {
+                matrix[y as usize][x as usize] = gabor(x - size as i32 / 2, y - size as i32 / 2, theta as f64 * PI / 180.0);
+            }
+        }
+        let mut convo_img = img.clone();
+        let convo_img_clone = convo_img.clone();
+        for y in 0..height {
+            for x in 0..width {
+                let mut pixel = 0.0;
+                for matrix_x in 0..size {
+                    for matrix_y in 0..size {
+                        let cur_x = clamp(x + matrix_x - size / 2, 0, width - 1);
+                        let cur_y = clamp(y + matrix_y - size / 2, 0, height - 1);
+                        pixel += convo_img_clone.get_pixel(cur_x, cur_y).data[0] as f64 * matrix[matrix_y as usize][matrix_x as usize];
+                    }
+                }
+                convo_img.put_pixel(x, y, clamp_plain_color(pixel));
+            }
+        }
+        for x in 0..width {
+            for y in 0..height {
+                if convo_img.get_pixel(x, y).data[0] > result_img.get_pixel(x, y).data[0] {
+                    result_img.put_pixel(x, y, convo_img.get_pixel(x, y).clone());
+                }
+            }
+        }
+    }
+
+    result_img
+}
+
+fn kernel_filter(img: &mut RgbImage, kernel: Vec<Vec<f64>>, divisor: f64) -> &mut RgbImage {
     let width = img.width() as i32;
     let height = img.height() as i32;
     let matrix_size = kernel.len() as i32;
