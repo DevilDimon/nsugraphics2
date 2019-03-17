@@ -99,6 +99,27 @@ pub fn non_maximum_suppression(img: &mut RgbImage, directions: Vec<Vec<f64>>) ->
     img
 }
 
+pub fn threshold(img: &mut RgbImage, lower_bound: f64, upper_bound: f64) -> &mut RgbImage {
+    let lower_bound = lower_bound * 255.0;
+    let upper_bound = upper_bound * 255.0;
+    let (width, height) = img.dimensions();
+    for i in 0..height {
+        for j in 0..width {
+            let pixel = img.get_pixel(j, i).data[0] as f64;
+            let new_pixel: image::Rgb<u8>;
+            if pixel >= upper_bound {
+                new_pixel = image::Rgb([255; 3]);
+            } else if pixel < lower_bound {
+                new_pixel = image::Rgb([0; 3]);
+            } else {
+                new_pixel = image::Rgb([127; 3]);
+            }
+            img.put_pixel(j, i, new_pixel);
+        }
+    }
+    img
+}
+
 fn kernel_filter(img: &mut RgbImage, kernel: Vec<Vec<i32>>, divisor: i32) -> &mut RgbImage {
     let width = img.width() as i32;
     let height = img.height() as i32;
